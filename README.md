@@ -1,4 +1,6 @@
 # ROSIntegration Plugin for Unreal Engine 4
+Instantiatable fork.
+
 This plugin adds ROS support to your Unreal Engine Project. It is designed to be used on different common platforms.
 Currently, Windows and Linux are directly supported.
 
