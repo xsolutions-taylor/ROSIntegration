@@ -152,7 +152,9 @@ public:
 	void MessageCallback(const ROSBridgePublishMsg &message)
 	{
 		TSharedPtr<FROSBaseMsg> BaseMsg;
-		if (ConvertMessage(&message, BaseMsg)) {
+		if (!_Callback) {
+			UE_LOG(LogROS, Error, TEXT("Callback function has been unregistered"));
+		} else if (ConvertMessage(&message, BaseMsg)) {
 			_Callback(BaseMsg);
 		}
 		else {
