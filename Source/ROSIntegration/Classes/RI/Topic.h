@@ -19,6 +19,8 @@ enum class EMessageType : uint8
 {
 	String = 0,
 	Float32 = 1,
+	PoseStamped = 2,
+	Odometry = 3,
 };
 
 UCLASS(Blueprintable)
@@ -62,6 +64,12 @@ protected:
 	UFUNCTION(BlueprintImplementableEvent, Category = ROS)
 	void OnFloat32Message(const float& Data);
 
+	UFUNCTION(BlueprintImplementableEvent, Category = ROS)
+	void OnPoseStampedMessage(const FVector& Position, const FRotator& Rotation);
+
+	UFUNCTION(BlueprintImplementableEvent, Category = ROS)
+	void OnOdometryMessage(const FVector& Position, const FRotator& Rotation);
+
 	UPROPERTY()
 	UROSIntegrationCore* _ROSIntegrationCore = nullptr;
 
@@ -88,6 +96,9 @@ private:
 
 	UFUNCTION(BlueprintCallable, Category = "ROS|Topic")
 	bool PublishStringMessage(const FString& Message);
+
+	UFUNCTION(BlueprintCallable, Category = "ROS|Topic")
+	bool UnsubscribeOnDestroy();
 
 	// Helper to keep track of self-destruction for async functions
 	TSharedPtr<UTopic, ESPMode::ThreadSafe> _SelfPtr;

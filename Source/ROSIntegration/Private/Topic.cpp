@@ -152,9 +152,7 @@ public:
 	void MessageCallback(const ROSBridgePublishMsg &message)
 	{
 		TSharedPtr<FROSBaseMsg> BaseMsg;
-		if (!_Callback) {
-			UE_LOG(LogROS, Error, TEXT("Callback function has been unregistered"));
-		} else if (ConvertMessage(&message, BaseMsg)) {
+		if (ConvertMessage(&message, BaseMsg)) {
 			_Callback(BaseMsg);
 		}
 		else {
@@ -179,6 +177,8 @@ UTopic::UTopic(const FObjectInitializer& ObjectInitializer)
 	{
 		SupportedMessageTypes.Add(EMessageType::String, TEXT("std_msgs/String"));
 		SupportedMessageTypes.Add(EMessageType::Float32, TEXT("std_msgs/Float32"));
+		SupportedMessageTypes.Add(EMessageType::PoseStamped, TEXT("geometry_msgs/PoseStamped"));
+		SupportedMessageTypes.Add(EMessageType::Odometry, TEXT("nav_msgs/Odometry"));
 	}
 }
 
@@ -345,6 +345,55 @@ bool UTopic::Subscribe()
 				}
 				break;
 			}
+			case EMessageType::PoseStamped:
+			{
+				auto ConcretePoseStampedMessage = StaticCastSharedPtr<ROSMessages::geometry_msgs::PoseStamped>(msg);
+				if (ConcretePoseStampedMessage.IsValid())
+				{
+					const FVector Pos = FVector(ConcretePoseStampedMessage->pose.position.x,
+						ConcretePoseStampedMessage->pose.position.y,
+						ConcretePoseStampedMessage->pose.position.z);
+
+					const FQuat Rot = FQuat(ConcretePoseStampedMessage->pose.orientation.x,
+						ConcretePoseStampedMessage->pose.orientation.y,
+						ConcretePoseStampedMessage->pose.orientation.z,
+						ConcretePoseStampedMessage->pose.orientation.w);
+
+					TWeakPtr<UTopic, ESPMode::ThreadSafe> SelfPtr(_SelfPtr);
+					AsyncTask(ENamedThreads::GameThread, [this, Pos, Rot, SelfPtr]()
+					{
+						if (!SelfPtr.IsValid()) return;
+						OnPoseStampedMessage(Pos, Rot.Rotator());
+					});
+				}
+				break;
+			}
+			case EMessageType::Odometry:
+			{
+				auto ConcreteOdometryMessage = StaticCastSharedPtr<ROSMessages::nav_msgs::Odometry>(msg);
+				auto ConcretePoseWithCovariance = ConcreteOdometryMessage->pose;
+				if (true)
+				{
+					const FVector Pos = FVector(
+						ConcretePoseWithCovariance.pose.position.x,
+						ConcretePoseWithCovariance.pose.position.y,
+						ConcretePoseWithCovariance.pose.position.z);
+
+					const FQuat Rot = FQuat(
+						ConcretePoseWithCovariance.pose.orientation.x,
+						ConcretePoseWithCovariance.pose.orientation.y,
+						ConcretePoseWithCovariance.pose.orientation.z,
+						ConcretePoseWithCovariance.pose.orientation.w);
+
+					TWeakPtr<UTopic, ESPMode::ThreadSafe> SelfPtr(_SelfPtr);
+					AsyncTask(ENamedThreads::GameThread, [this, Pos, Rot, SelfPtr]()
+					{
+						if (!SelfPtr.IsValid()) return;
+						OnOdometryMessage(Pos, Rot.Rotator());
+					});
+				}
+				break;
+			}
 			default:
 				unimplemented();
 				break;
@@ -356,7 +405,10 @@ bool UTopic::Subscribe()
 
 	return success;
 }
-
+bool UTopic::UnsubscribeOnDestroy()
+{
+	return this->Unsubscribe();
+}
 
 bool UTopic::PublishStringMessage(const FString& Message)
 {
